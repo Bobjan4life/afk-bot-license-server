@@ -1,8 +1,9 @@
+
 import os
 import hmac
 import requests
-from flask import Flask, request, jsonify
 from datetime import datetime, timezone
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
@@ -15,12 +16,11 @@ def database_request(method, params=None, data=None):
     if not SUPABASE_URL or not SUPABASE_KEY:
         raise RuntimeError("Database settings are missing")
 
-  headers = {
-    "apikey": SUPABASE_KEY,
-    "Authorization": f"Bearer {SUPABASE_KEY}",
-    "Content-Type": "application/json",
-    "Prefer": "return=representation",
-}
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=representation",
     }
 
     response = requests.request(
@@ -44,7 +44,9 @@ def admin_authorized():
 
 @app.route("/", methods=["GET"])
 def home():
-    return jsonify({"message": "AFK BOT licence server is running"})
+    return jsonify({
+        "message": "AFK BOT licence server is running"
+    })
 
 
 @app.route("/verify", methods=["POST"])
@@ -54,7 +56,7 @@ def verify_license():
     machine_id = data.get("machine_id")
 
     if not isinstance(key_id, str) or not isinstance(machine_id, str):
-        return jsonify({"valid": False, "message": "Invalid request"}), 400
+        return jsonify({"valid": False}), 400
 
     try:
         rows = database_request(
@@ -67,17 +69,17 @@ def verify_license():
             },
         )
 
-        if not rows:
-            return jsonify({"valid": False, "message": "Licence not found"})
+        if not rows or rows[0]["status"] != "active":
+            return jsonify({
+                "valid": False,
+                "message": "Licence invalid or revoked"
+            })
 
-        if rows[0]["status"] != "active":
-            return jsonify({"valid": False, "message": "Licence revoked"})
-
-        return jsonify({"valid": True, "message": "Licence active"})
+        return jsonify({"valid": True})
 
     except Exception:
-        app.logger.exception("Licence verification failed")
-        return jsonify({"valid": False, "message": "Server unavailable"}), 503
+        app.logger.exception("Verification failed")
+        return jsonify({"valid": False}), 503
 
 
 @app.route("/register", methods=["POST"])
@@ -92,13 +94,13 @@ def register_license():
 
     if not isinstance(key_id, str) or not key_id.strip():
         return jsonify({"error": "Missing key_id"}), 400
+
     if not isinstance(machine_id, str) or not machine_id.strip():
         return jsonify({"error": "Missing machine_id"}), 400
 
     try:
         database_request(
             "POST",
-            params={"select": "key_id"},
             data={
                 "key_id": key_id,
                 "machine_id": machine_id,
@@ -106,16 +108,11 @@ def register_license():
                 "status": "active",
             },
         )
-        return jsonify({"success": True, "message": "Licence registered"})
+        return jsonify({"success": True})
 
-    except requests.HTTPError as exc:
-        if exc.response is not None and exc.response.status_code == 409:
-            return jsonify({"error": "That licence is already registered"}), 409
-        app.logger.exception("Licence registration failed")
-        return jsonify({"error": "Database error"}), 500
     except Exception:
-        app.logger.exception("Licence registration failed")
-        return jsonify({"error": "Server unavailable"}), 503
+        app.logger.exception("Registration failed")
+        return jsonify({"error": "Registration failed"}), 500
 
 
 @app.route("/revoke", methods=["POST"])
@@ -148,9 +145,12 @@ def revoke_license():
         return jsonify({"success": True, "message": "Licence revoked"})
 
     except Exception:
-        app.logger.exception("Licence revocation failed")
-        return jsonify({"error": "Server unavailable"}), 503
+        app.logger.exception("Revocation failed")
+        return jsonify({"error": "Revocation failed"}), 500
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+    app.run(
+        host="0.0.0.0",
+        port=int(os.environ.get("PORT", 10000))
+    )
