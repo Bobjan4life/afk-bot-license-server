@@ -16,11 +16,10 @@ def database_request(method, params=None, data=None):
     if not SUPABASE_URL or not SUPABASE_KEY:
         raise RuntimeError("Database settings are missing")
 
-   headers = {
-    "apikey": SUPABASE_KEY,
-    "Content-Type": "application/json",
-    "Prefer": "return=representation",
-}
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Content-Type": "application/json",
+        "Prefer": "return=representation",
     }
 
     response = requests.request(
@@ -44,9 +43,7 @@ def admin_authorized():
 
 @app.route("/", methods=["GET"])
 def home():
-    return jsonify({
-        "message": "AFK BOT licence server is running"
-    })
+    return jsonify({"message": "AFK BOT licence server is running"})
 
 
 @app.route("/verify", methods=["POST"])
